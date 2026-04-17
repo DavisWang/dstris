@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dstris</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0d0d0f;
+      overflow: hidden;
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      color: #c8c8d4;
+    }
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+    #overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    #overlay.visible { display: flex; }
+    #overlay-panel {
+      background: #1c1c24;
+      border-radius: 8px;
+      padding: 32px 48px;
+      text-align: center;
+      min-width: 320px;
+    }
+    #overlay-panel h1 {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    #overlay-panel .stats {
+      font-size: 13px;
+      color: #a0a0b0;
+      margin-bottom: 24px;
+      line-height: 1.8;
+    }
+    #difficulty-row {
+      display: none;
+      gap: 8px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    #difficulty-row.visible { display: flex; }
+    .diff-btn {
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: 1px solid #2040e0;
+      background: transparent;
+      color: #c8c8d4;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .diff-btn.active {
+      background: #2040e0;
+      color: #fff;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+    }
+    .btn-primary { background: #2040e0; color: #fff; }
+    .btn-secondary { background: transparent; border: 1px solid #444; color: #c8c8d4; }
+    .btn:hover { filter: brightness(1.15); }
+    .btn:focus { outline: 2px solid #2040e0; outline-offset: 2px; }
+
+    /* ── Title Screen ─────────────────────────────────────────────── */
+    #title-screen {
+      position: absolute;
+      inset: 0;
+      background: #0d0d0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+    #title-screen.hidden { display: none; }
+
+    #title-logo {
+      font-size: clamp(56px, 10vw, 96px);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #00cfcf;
+      text-shadow:
+        0 0 16px #00cfcf,
+        0 0 40px rgba(0, 207, 207, 0.4);
+      margin-bottom: 10px;
+      user-select: none;
+    }
+    #title-tagline {
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #5a5a72;
+      margin-bottom: 48px;
+    }
+    #title-diff-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #5a5a72;
+      margin-bottom: 10px;
+    }
+    #title-diff-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+    #title-play-hint {
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c8c8d4;
+      animation: blink 1.2s ease-in-out infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+    #title-how-to-btn {
+      background: transparent;
+      border: 1px solid #2a2a3a;
+      color: #5a5a72;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    #title-how-to-btn:hover { color: #c8c8d4; border-color: #555570; }
+
+    /* ── How To Play Modal ────────────────────────────────────────── */
+    #htp-modal {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+    }
+    #htp-modal.visible { display: flex; }
+    #htp-panel {
+      background: #1c1c24;
+      border-radius: 8px;
+      padding: 32px 40px;
+      width: min(560px, 90vw);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #htp-panel h2 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #00cfcf;
+      margin-bottom: 24px;
+    }
+    .htp-section {
+      margin-bottom: 22px;
+    }
+    .htp-section h3 {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5a5a72;
+      margin-bottom: 10px;
+    }
+    .htp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #1e1e28;
+      font-size: 13px;
+      color: #c8c8d4;
+    }
+    .htp-row:last-child { border-bottom: none; }
+    .htp-keys {
+      display: flex;
+      gap: 4px;
+    }
+    .key {
+      background: #111116;
+      border: 1px solid #333340;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #a0a0b8;
+      white-space: nowrap;
+    }
+    .htp-note {
+      font-size: 12px;
+      color: #5a5a72;
+      line-height: 1.7;
+    }
+    #htp-close {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 10px;
+      background: transparent;
+      border: 1px solid #333340;
+      border-radius: 4px;
+      color: #c8c8d4;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #htp-close:hover { background: #2a2a36; }
+    #title-footer {
+      position: absolute;
+      bottom: 20px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: #3a3a50;
+      text-transform: uppercase;
+    }
+    /* decorative scanline strip */
+    #title-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.08) 3px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="title-screen">
+    <div id="title-logo">DSTRIS</div>
+    <div id="title-tagline">vs CPU &mdash; competitive Tetris</div>
+    <div id="title-diff-label">Difficulty</div>
+    <div id="title-diff-row">
+      <button class="diff-btn" data-diff="easy">Easy</button>
+      <button class="diff-btn active" data-diff="medium">Medium</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+    <div id="title-play-hint">Press any key to start</div>
+    <button id="title-how-to-btn">How to play</button>
+    <div id="title-footer">by Pwner Studios</div>
+  </div>
+
+  <div id="htp-modal">
+    <div id="htp-panel">
+      <h2>How to Play</h2>
+
+      <div class="htp-section">
+        <h3>Controls</h3>
+        <div class="htp-row"><span>Move left / right</span><div class="htp-keys"><span class="key">◀</span><span class="key">▶</span></div></div>
+        <div class="htp-row"><span>Soft drop</span><div class="htp-keys"><span class="key">▼</span></div></div>
+        <div class="htp-row"><span>Hard drop</span><div class="htp-keys"><span class="key">Space</span></div></div>
+        <div class="htp-row"><span>Rotate clockwise</span><div class="htp-keys"><span class="key">X</span><span class="key">▲</span></div></div>
+        <div class="htp-row"><span>Rotate counter-clockwise</span><div class="htp-keys"><span class="key">Z</span></div></div>
+        <div class="htp-row"><span>Hold piece</span><div class="htp-keys"><span class="key">C</span><span class="key">Shift</span></div></div>
+      </div>
+
+      <div class="htp-section">
+        <h3>Attack (lines sent)</h3>
+        <div class="htp-row"><span>Double</span><span>1</span></div>
+        <div class="htp-row"><span>Triple</span><span>2</span></div>
+        <div class="htp-row"><span>Tetris (4 lines)</span><span>4</span></div>
+        <div class="htp-row"><span>T-Spin Single</span><span>2</span></div>
+        <div class="htp-row"><span>T-Spin Double</span><span>4</span></div>
+        <div class="htp-row"><span>T-Spin Triple</span><span>6</span></div>
+        <div class="htp-row"><span>Perfect Clear</span><span>10</span></div>
+        <div class="htp-row"><span>Back-to-back bonus</span><span>+1</span></div>
+      </div>
+
+      <div class="htp-section">
+        <h3>Garbage</h3>
+        <p class="htp-note">Attacks first cancel your opponent's incoming garbage. When you lock a piece without clearing a line, any remaining pending garbage solidifies at the bottom of your board. Watch the amber gauge on the side of your board — red means it materializes on your next lock.</p>
+      </div>
+
+      <button id="htp-close">Got it</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <canvas id="game"></canvas>
+    <div id="overlay">
+      <div id="overlay-panel">
+        <h1 id="result-text"></h1>
+        <div class="stats" id="stats-text"></div>
+        <div id="difficulty-row">
+          <button class="diff-btn" data-diff="easy">Easy</button>
+          <button class="diff-btn active" data-diff="medium">Medium</button>
+          <button class="diff-btn" data-diff="hard">Hard</button>
+        </div>
+        <button class="btn btn-primary" id="restart-btn">Play again</button>
+        <button class="btn btn-secondary" id="change-diff-btn">Change difficulty</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
