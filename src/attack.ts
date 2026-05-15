@@ -46,14 +46,10 @@ export function computeAttack(
     }
   }
 
-  if (base === 0 && !perfectClear) {
-    return { lines: 0, label, isB2B: false };
-  }
-
   let total = base;
   const isB2B = b2bEligible && b2bActive;
   if (isB2B) total += B2B_BONUS;
-  total += comboBonus(combo);
+  if (linesCleared > 0) total += comboBonus(combo);
 
   return { lines: Math.max(0, total), label, isB2B };
 }
